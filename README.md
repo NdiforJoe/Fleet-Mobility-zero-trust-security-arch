@@ -38,3 +38,11 @@
 
 ## Cloud Platform
 AWS (af-south-1 — Cape Town) for POPIA data residency
+
+## Architecture Diagrams
+
+### VPC Hub-Spoke Topology
+![VPC Hub-Spoke Architecture](architecture/diagrams/vpc_hub_spoke.png)
+
+### Authentication Flow
+![Authentication Flow](architecture/diagrams/identity_auth_flow.png)
