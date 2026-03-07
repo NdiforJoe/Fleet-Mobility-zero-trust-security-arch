@@ -1,0 +1,25 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!example.tfvars
+.terraform.lock.hcl
+
+# Secrets — never commit these
+*.pem
+*.key
+secrets/
+.env
+.env.*
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+*.swp
+
+# Draw.io backups
+*.bkp
