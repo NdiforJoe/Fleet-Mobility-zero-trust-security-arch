@@ -36,6 +36,9 @@ The "Mitigations" column describes the controls that break the attack chain.
 | T-012 | Mobile App (Client-side) | **Tampering** | Attacker reverse-engineers the Avis mobile app, extracts hardcoded API endpoint URLs and any embedded credentials, and uses them to make direct API calls bypassing the app's input validation and rate limiting logic | Medium | High | **HIGH** | No credentials or secrets in mobile app binary; API Gateway requires valid Cognito JWT — raw endpoint calls without auth token are rejected; Certificate pinning in mobile app to prevent proxy-based MITM; App binary obfuscation and integrity checks | API Gateway: all endpoints require Lambda authoriser; Cognito: PKCE flow ensures no client secrets in mobile app; AWS WAF user-agent anomaly detection; CloudFront signed URLs for any static content requiring auth |
 | T-013 | Session Management (DynamoDB) | **Information Disclosure** | An attacker who gains read access to the DynamoDB session table (e.g. via misconfigured IAM role) extracts active session tokens for multiple customers, enabling account takeover without needing passwords | Low | Critical | **HIGH** | Session tokens are hashed before storage (never stored as plaintext); DynamoDB table encrypted with dedicated KMS CMK; IAM role for session service has GetItem only on own user's partition key (attribute-based access control); Sessions expire after 15 minutes with TTL | DynamoDB: encryption at rest with KMS CMK avis/sessions; IAM condition: `dynamodb:LeadingKeys` restricts role to own user's records only; DynamoDB TTL auto-deletes expired sessions; GuardDuty: detects anomalous DynamoDB scan operations |
 | T-014 | AI Pricing Engine (Lambda + SageMaker) | **Tampering** | Attacker discovers the AI pricing model's training data pipeline reads from an S3 bucket with overly permissive IAM policy, and injects poisoned training records (e.g. fake historical bookings with manipulated prices) to systematically bias the model toward under-pricing premium vehicles | Low | High | **MEDIUM** | Training data pipeline validates checksums of input data against a signed manifest stored separately; SageMaker training job IAM role has read-only access to a specific versioned S3 prefix only; Data lineage tracking logs all training data inputs; Anomaly detection on model output price distribution before promotion to production | S3 Object Lock on training data bucket (prevents modification of historical records); SageMaker: separate IAM role per pipeline stage; CloudTrail: logs all S3 GetObject on training bucket; SageMaker Model Monitor detects output distribution drift |
+| T-015 | Branch Counter (Staff Access) | **Information Disclosure** | Avis branch agent (e.g. Naledi at OR Tambo) leaves her workstation unlocked while assisting a customer at the vehicle lot — another person walks behind the counter and views a customer's SA ID number, address, and driver's licence details on the screen | Medium | High | **HIGH** | 60-second auto screen lock enforced via Group Policy / Intune on all branch workstations; privacy screen filters on all counter monitors; 5-minute application session timeout on the booking system; clear screen policy in branch SOP; staff awareness training | Cognito: short-lived session tokens expire automatically; CloudWatch alarm: booking system session idle > 5 min without activity triggers forced logout; CloudTrail: logs session termination events per staff user ID |
+| T-016 | Branch Counter — SA Customers (Identity Verification) | **Spoofing** | A fraudster presents a convincing fake South African ID document to an Avis branch agent to create a booking in a legitimate customer's name, then rents and disappears with a premium vehicle — the fake ID passes visual inspection | Medium | Critical | **CRITICAL** | Real-time SA ID verification via Home Affairs API integration (Lambda calls DHA verification endpoint before booking is confirmed); ID document photo captured at counter and stored in S3 linked to booking record; staff document verification SOP with UV light check; Step Functions booking workflow blocks confirmation until verification returns positive result | Lambda → Home Affairs DHA API (synchronous call, booking blocked until verified); S3 SSE-KMS (avis/pii key) for ID photo storage per booking; Step Functions: booking status = PENDING until verification = CONFIRMED; CloudTrail: logs verification result, timestamp, and agent ID per booking |
+| T-017 | Branch Counter — Foreign Customers (Identity Verification) | **Spoofing** | A fraudster presents a counterfeit foreign passport and fake International Driving Permit (IDP) to an Avis branch agent — the documents cannot be verified via Home Affairs (SA-only), enabling fraudulent vehicle rental and theft | Medium | Critical | **CRITICAL** | Third-party passport MRZ verification via Jumio or Onfido API (Lambda call validates document structure, security features, and MRZ data); AWS Rekognition face comparison between passport photo and live counter photo; credit card mandatory for all foreign rentals as financial identity proxy; IDP validity check: Lambda validates days in SA < 366 from passport entry stamp; Step Functions blocks booking until all checks pass | Lambda → Jumio/Onfido API (passport MRZ + document authenticity score); AWS Rekognition: CompareFaces API (similarity threshold > 90%); Step Functions: parallel verification workflow — booking confirmed only when ALL checks return PASS; S3 SSE-KMS stores passport scan + counter photo; CloudTrail: logs verification score, document type, issuing country, agent ID |
 
 ---
 
@@ -43,8 +46,8 @@ The "Mitigations" column describes the controls that break the attack chain.
 
 | Risk Level | Count | Threats |
 |------------|-------|---------|
-| 🔴 CRITICAL | 4 | T-001, T-002, T-005, T-010 |
-| 🟠 HIGH | 8 | T-003, T-004, T-006, T-007, T-009, T-011, T-012, T-013 |
+| 🔴 CRITICAL | 6 | T-001, T-002, T-005, T-010, T-016, T-017 |
+| 🟠 HIGH | 9 | T-003, T-004, T-006, T-007, T-009, T-011, T-012, T-013, T-015 |
 | 🟡 MEDIUM | 2 | T-008, T-014 |
 | 🟢 LOW | 0 | — |
 
@@ -66,7 +69,23 @@ The "Mitigations" column describes the controls that break the attack chain.
 | Mobile App | — | T-012 | — | — | — | — |
 | Session Management | — | — | — | T-013 | — | — |
 | AI Pricing Engine | — | T-014 | — | — | — | — |
+| Branch Counter (Staff) | — | — | — | T-015 | — | — |
+| Branch Counter (SA Customer) | T-016 | — | — | — | — | — |
+| Branch Counter (Foreign Customer) | T-017 | — | — | — | — | — |
 
 ✅ All 6 STRIDE categories covered
-✅ All 7 core components covered
-⚠️ Gaps to address in next review: Repudiation on Booking API; DoS on IoT Core
+✅ All 10 components covered (3 new branch counter components added)
+✅ Walk-in and foreign customer scenarios explicitly modelled
+⚠️ Gaps to address in next review: Repudiation on Booking API; DoS on IoT Core; Denial of Service on branch counter system (e.g. booking system outage during peak travel)
+
+---
+
+## Scenario Coverage Summary
+
+| Customer Type | Entry Point | Identity Verification | Threats Modelled |
+|--------------|-------------|----------------------|-----------------|
+| SA Customer (Digital) | Mobile App / Website | Cognito AFSM + device fingerprint | T-001, T-002, T-012, T-013 |
+| SA Customer (Walk-in) | Branch Counter | Home Affairs API + ID photo | T-015, T-016 |
+| Foreign Customer (Walk-in) | Branch Counter | Jumio/Onfido + Rekognition + credit card | T-017 |
+| Fleet Staff | Internal system | IAM Identity Center + MFA | T-008, T-010 |
+| Third-party Partners | Integration Layer | Partner JWT scopes + DPA | T-009 |
