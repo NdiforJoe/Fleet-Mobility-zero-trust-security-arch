@@ -29,12 +29,12 @@
 
 ## Status
 - [x] Phase 1: Repo structure
-- [ ] Phase 2: SABSA matrix
-- [ ] Phase 3: STRIDE threat register
-- [ ] Phase 4: Architecture diagrams
-- [ ] Phase 5: ADRs
-- [ ] Phase 6: Compliance matrix
-- [ ] Phase 7: Security-by-design handoff docs
+- [x] Phase 2: SABSA matrix
+- [x] Phase 3: STRIDE threat register
+- [x] Phase 4: Architecture diagrams
+- [x] Phase 5: ADRs
+- [x] Phase 6: Compliance matrix
+- [x] Phase 7: Security-by-design handoff docs
 
 ## Cloud Platform
 AWS (af-south-1 — Cape Town) for POPIA data residency
