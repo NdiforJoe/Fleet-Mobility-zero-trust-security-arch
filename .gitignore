@@ -4,7 +4,7 @@
 *.tfstate.backup
 *.tfvars
 !example.tfvars
-.terraform.lock.hcl
+
 
 # Secrets — never commit these
 *.pem
