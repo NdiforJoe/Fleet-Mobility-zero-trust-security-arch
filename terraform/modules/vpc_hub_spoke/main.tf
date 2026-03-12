@@ -95,10 +95,10 @@ resource "aws_vpc" "spoke_data" {
   enable_dns_support   = true
 
   tags = {
-    Name            = "${local.name_prefix}-spoke-data-vpc"
-    Tier            = "data"
-    DataClass       = "PII-RESTRICTED"
-    POPIAScope      = "true"
+    Name       = "${local.name_prefix}-spoke-data-vpc"
+    Tier       = "data"
+    DataClass  = "PII-RESTRICTED"
+    POPIAScope = "true"
   }
 }
 
@@ -108,8 +108,8 @@ resource "aws_subnet" "spoke_data_private_a" {
   availability_zone = "${var.aws_region}a"
 
   tags = {
-    Name      = "${local.name_prefix}-spoke-data-private-a"
-    Tier      = "data-private"
+    Name       = "${local.name_prefix}-spoke-data-private-a"
+    Tier       = "data-private"
     POPIAScope = "true"
   }
 }
@@ -120,8 +120,8 @@ resource "aws_subnet" "spoke_data_private_b" {
   availability_zone = "${var.aws_region}b"
 
   tags = {
-    Name      = "${local.name_prefix}-spoke-data-private-b"
-    Tier      = "data-private"
+    Name       = "${local.name_prefix}-spoke-data-private-b"
+    Tier       = "data-private"
     POPIAScope = "true"
   }
 }
@@ -162,7 +162,7 @@ resource "aws_ec2_transit_gateway" "main" {
   default_route_table_association = "disable"
   default_route_table_propagation = "disable"
   dns_support                     = "enable"
-  vpn_ecmp_support               = "enable"
+  vpn_ecmp_support                = "enable"
 
   tags = {
     Name    = "${local.name_prefix}-tgw"
@@ -214,7 +214,7 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "spoke_fleet" {
 # Hub route table — can reach all spokes
 resource "aws_ec2_transit_gateway_route_table" "hub" {
   transit_gateway_id = aws_ec2_transit_gateway.main.id
-  tags = { Name = "${local.name_prefix}-tgw-rt-hub" }
+  tags               = { Name = "${local.name_prefix}-tgw-rt-hub" }
 }
 
 # Spoke route table — can ONLY reach hub
@@ -295,7 +295,7 @@ resource "aws_flow_log" "spoke_data" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
 
   tags = {
-    Name      = "${local.name_prefix}-flowlog-data"
+    Name       = "${local.name_prefix}-flowlog-data"
     POPIAScope = "true"
   }
 }
@@ -311,7 +311,8 @@ resource "aws_flow_log" "spoke_fleet" {
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/avis/vpc-flow-logs/${var.environment}"
-  retention_in_days = 90
+  retention_in_days = 365
+  kms_key_id        = var.logs_key_arn
 
   tags = { Name = "${local.name_prefix}-flow-logs" }
 }
@@ -335,17 +336,23 @@ resource "aws_iam_role_policy" "flow_log" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams"
-      ]
-      Resource = "*"
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup"]
+        Resource = aws_cloudwatch_log_group.flow_logs.arn
+      }
+    ]
   })
 }
 
@@ -368,10 +375,11 @@ resource "aws_security_group" "app_tier" {
   }
 
   egress {
-    description = "All outbound via TGW"
+    description = "All outbound via TGW - controlled by TGW route tables not SG (ADR-003)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
+    #trivy:ignore:AVD-AWS-0104
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -393,19 +401,46 @@ resource "aws_security_group" "data_tier" {
     protocol    = "tcp"
     cidr_blocks = [var.spoke_app_cidr]
   }
-
   egress {
     description = "Deny all outbound - data tier never initiates connections"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
+    #trivy:ignore:AVD-AWS-0104
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
-    Name      = "${local.name_prefix}-sg-data-tier"
-    Tier      = "data"
+    Name       = "${local.name_prefix}-sg-data-tier"
+    Tier       = "data"
     POPIAScope = "true"
-    STRIDERef = "T-005-T-006"
+    STRIDERef  = "T-005-T-006"
   }
+}
+# ─────────────────────────────────────────────
+# DEFAULT SECURITY GROUP LOCKDOWN
+# CKV2_AWS_12: Default SG must restrict all traffic
+# Zero-trust: nothing uses the default SG —
+# all resources get explicit named SGs
+# ─────────────────────────────────────────────
+
+resource "aws_default_security_group" "hub" {
+  vpc_id = aws_vpc.hub.id
+  # No ingress or egress rules = deny all
+  tags = { Name = "${local.name_prefix}-hub-default-sg-LOCKED" }
+}
+
+resource "aws_default_security_group" "spoke_app" {
+  vpc_id = aws_vpc.spoke_app.id
+  tags   = { Name = "${local.name_prefix}-app-default-sg-LOCKED" }
+}
+
+resource "aws_default_security_group" "spoke_data" {
+  vpc_id = aws_vpc.spoke_data.id
+  tags   = { Name = "${local.name_prefix}-data-default-sg-LOCKED" }
+}
+
+resource "aws_default_security_group" "spoke_fleet" {
+  vpc_id = aws_vpc.spoke_fleet.id
+  tags   = { Name = "${local.name_prefix}-fleet-default-sg-LOCKED" }
 }

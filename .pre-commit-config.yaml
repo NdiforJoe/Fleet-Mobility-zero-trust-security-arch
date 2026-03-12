@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────
+# PRE-COMMIT HOOKS
+# Run locally before every git commit.
+# Catches issues before they reach GitHub Actions.
+#
+# Install:
+#   pip install pre-commit --break-system-packages
+#   pre-commit install
+#   pre-commit run --all-files  (first-time scan)
+#
+# STRIDE: T-010 (credential exposure prevention)
+# Compliance: ISO 27001 A.8.25, SR-APP-005
+# ─────────────────────────────────────────────────────────────
+
+repos:
+  # ── Terraform formatting ──────────────────
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.88.0
+    hooks:
+      - id: terraform_fmt
+        name: Terraform Format
+      - id: terraform_validate
+        name: Terraform Validate
+        args:
+          - --args=-no-color
+      - id: terraform_trivy
+        name: Trivy IaC Security Scan
+        args:
+          - --args=--severity=HIGH,CRITICAL
+          - --args=--exit-code=1
+      - id: terraform_checkov
+        name: Checkov Compliance Scan
+        args:
+          - --args=--skip-check=CKV_AWS_144,CKV_AWS_18,CKV_AWS_86,CKV2_AWS_62,CKV_AWS_252,CKV_AWS_382,CKV2_AWS_5,CKV2_AWS_3,CKV2_AWS_61,CKV_AWS_120,CKV_AWS_225,CKV2_AWS_51,CKV2_AWS_77,CKV_AWS_158,CKV2_AWS_2,CKV2_AWS_4,CKV_GIT_1
+
+  # ── Secret detection ──────────────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: Gitleaks Secret Scan
+
+  # ── General file hygiene ──────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trailing Whitespace
+      - id: end-of-file-fixer
+        name: End of File Fixer
+        exclude: results\.sarif
+      - id: check-yaml
+        name: Check YAML Syntax
+      - id: check-json
+        name: Check JSON Syntax
+      - id: check-merge-conflict
+        name: Check for Merge Conflicts
+      - id: detect-private-key
+        name: Detect Private Keys
+      - id: no-commit-to-branch
+        name: Prevent Direct Commit to Main
+        args: [--branch, main]
+
+  # ── Markdown linting ─────────────────────
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        name: Markdown Lint
+        args:
+          - --config
+          - .markdownlint.yml
+          - --fix

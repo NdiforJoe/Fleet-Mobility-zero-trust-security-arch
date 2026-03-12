@@ -23,3 +23,9 @@ Thumbs.db
 
 # Draw.io backups
 *.bkp
+
+# Checkov SARIF output files
+results.sarif
+results_sarif.sarif
+**/results_sarif.sarif
+**/results.sarif

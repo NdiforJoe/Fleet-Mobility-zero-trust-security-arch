@@ -30,6 +30,7 @@ Service Control Policy (SCP).
 
 IAM Identity Center directly implements NIST SP 800-207 Zero-Trust Pillar 1
 (Identity Verification):
+
 - **Federation with Azure AD** means HR's join/leave/move process automatically
   propagates to AWS access — no orphaned accounts
 - **SAML assertion model** means AWS never receives the actual credential,
@@ -42,12 +43,14 @@ IAM Identity Center directly implements NIST SP 800-207 Zero-Trust Pillar 1
 ## Consequences
 
 **Positive:**
+
 - Eliminates long-lived AWS access keys for human users entirely
 - Every login produces an auditable event in CloudTrail (sso.amazonaws.com)
 - Permission sets can be updated centrally and apply to all accounts instantly
 - Aligns with CIS AWS Foundations Benchmark v1.4 control 1.1
 
 **Negative / Trade-offs:**
+
 - Dependency on Azure AD availability (if Azure AD is down, AWS console
   access is unavailable for human users)
 - Initial setup requires console steps that cannot be fully Terraformed

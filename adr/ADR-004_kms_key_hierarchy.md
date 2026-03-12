@@ -43,6 +43,7 @@ that process that specific data tier.
 ## Consequences
 
 **Positive:**
+
 - Full key separation aligned to ISO 27001 and PCI-DSS requirements
 - Per-classification audit trail (who decrypted PII and when)
 - Payment CMK can be placed under dual-control MRK for PCI scope isolation
@@ -50,6 +51,7 @@ that process that specific data tier.
   account compromise from destroying audit evidence
 
 **Negative / Trade-offs:**
+
 - Cost: $1/CMK/month × 5 = $5/month (negligible, justified)
 - Terraform complexity: each resource must reference the correct key ARN
   by classification — enforced through module outputs with named variables

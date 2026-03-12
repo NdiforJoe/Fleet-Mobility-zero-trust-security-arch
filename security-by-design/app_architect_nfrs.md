@@ -1,5 +1,7 @@
 # Application Security Requirements
+
 ## Handoff Document — Security Architect to App Architect
+
 ### Avis Fleet & Mobility Platform
 
 > **Document type:** Non-Functional Security Requirements (NFRs)
@@ -27,7 +29,8 @@ incoming JWT using the Lambda authoriser. The authoriser
 must check all five of the following claims on every request.
 Failure of any single check must return HTTP 401 immediately
 with no additional detail in the response body.
-```
+
+```text
 CLAIM 1: RS256 signature
          Verify using Cognito JWKS endpoint
          Reject if algorithm is not RS256
@@ -51,9 +54,10 @@ CLAIM 5: Device fingerprint
          custom:device_fingerprint claim must match
          the fingerprint registered at login
          Mismatch = possible token theft → reject + alert SOC
-```
+```text
 
 **Definition of Done:**
+
 - [ ] Lambda authoriser unit tests cover all 5 failure scenarios
 - [ ] Integration test: expired token returns 401
 - [ ] Integration test: wrong audience returns 401
@@ -73,14 +77,15 @@ issued within the last 10 minutes. A valid base JWT alone is
 insufficient. Return HTTP 403 with body
 `{"error": "step_up_mfa_required"}` if the claim is absent
 or older than 10 minutes.
-```
+
+```text
 Endpoints requiring step-up MFA:
 POST   /api/payments/*
 PUT    /api/profile/payment-methods
 GET    /api/profile/export          (GDPR Art.20 portability)
 DELETE /api/profile                 (account deletion)
 PUT    /api/profile/id-documents    (document update)
-```
+```text
 
 **Rationale:** Even if a customer's base session token is stolen,
 the attacker cannot complete a payment or export PII without
@@ -88,6 +93,7 @@ the customer's MFA device. This limits the blast radius of
 T-001 for high-value actions.
 
 **Definition of Done:**
+
 - [ ] Payment endpoint returns 403 without step_up_mfa claim
 - [ ] step_up_mfa claim older than 10 minutes is rejected
 - [ ] Frontend prompts MFA re-authentication before payment flow
@@ -105,7 +111,8 @@ T-001 for high-value actions.
 Identity document fields must be validated per document type.
 A single generic string validator is insufficient — each type
 has a specific format that must be enforced server-side.
-```
+
+```text
 DOCUMENT TYPE      FORMAT RULE                    EXAMPLE
 ────────────────────────────────────────────────────────
 SA_ID              Exactly 13 digits              9001015009087
@@ -125,7 +132,7 @@ SA_LICENCE         8-13 alphanumeric              WP123456789
 FOREIGN_LICENCE    Alphanumeric, 5-20 chars       Must accompany IDP
                    Issuing country required
                    days_in_sa check: < 366 days
-```
+```text
 
 All validation must occur server-side in the Lambda handler.
 Client-side validation is UX only — never trusted for security.
@@ -133,6 +140,7 @@ Parameterised queries must be used for all database operations.
 No dynamic SQL construction permitted.
 
 **Definition of Done:**
+
 - [ ] Unit tests for each document type including boundary cases
 - [ ] SA ID with invalid Luhn digit returns 400
 - [ ] Foreign licence without IDP returns 400
@@ -151,7 +159,8 @@ Application errors must never expose internal system details
 to API consumers. Stack traces, database error messages,
 internal ARNs, and file paths are classified as sensitive
 operational information.
-```
+
+```text
 CORRECT error response:
 HTTP 500
 {
@@ -167,7 +176,7 @@ HTTP 500
             DETAIL: Key (id)=(12345) already exists.",
   "stack": "at QueryExecutor.execute (/app/db/query.js:45)"
 }
-```
+```text
 
 All errors must be logged internally with full detail
 to CloudWatch Logs. The correlation request_id allows
@@ -175,6 +184,7 @@ the SOC to retrieve full error context from logs
 without exposing it to the API consumer.
 
 **Definition of Done:**
+
 - [ ] All Lambda handlers have try/catch returning generic errors
 - [ ] Integration test: trigger DB error, verify no stack trace in response
 - [ ] CloudWatch logs show full error detail with request_id
@@ -190,6 +200,7 @@ without exposing it to the API consumer.
 
 No secrets, credentials, API keys, or connection strings
 may appear in:
+
 - Application source code
 - Environment variables in Lambda configuration
 - Docker image layers
@@ -201,6 +212,7 @@ All secrets must be retrieved from AWS Secrets Manager
 at runtime using the Lambda execution role. The role
 must have GetSecretValue permission only on the specific
 secret ARNs it requires — not `secretsmanager:*`.
+
 ```python
 # CORRECT — retrieve at runtime
 import boto3
@@ -211,13 +223,14 @@ secret = client.get_secret_value(
 
 # INCORRECT — hardcoded credential
 DB_PASSWORD = "avis2024secure!"  # ← immediate security incident
-```
+```text
 
 Pre-commit hooks must scan for secrets before any
 commit reaches the repository. See Phase 9 CI/CD
 pipeline for git-secrets and truffleHog configuration.
 
 **Definition of Done:**
+
 - [ ] No secrets in Lambda environment variables
 - [ ] IAM role has GetSecretValue on specific ARN only
 - [ ] Pre-commit hook blocks commits containing secrets
@@ -237,6 +250,7 @@ Every application event involving personal information
 must produce a structured audit log entry in the
 following format. Unstructured log lines are not
 acceptable as audit evidence.
+
 ```json
 {
   "timestamp": "2025-01-15T14:23:07.123Z",
@@ -253,7 +267,7 @@ acceptable as audit evidence.
   "ip_address": "10.1.0.45",
   "user_agent": "AvisMobile/2.1 iOS/17.0"
 }
-```
+```text
 
 PII field values must NEVER appear in audit logs.
 Only field names are logged — not the actual SA ID number.
@@ -261,6 +275,7 @@ Logs are shipped to CloudWatch Logs and picked up by
 CloudTrail for immutable storage in S3 Object Lock bucket.
 
 **Definition of Done:**
+
 - [ ] All Lambda handlers emit structured JSON logs
 - [ ] pii_fields_accessed lists field names, not values
 - [ ] CloudWatch log group retention set to 90 days minimum
@@ -279,6 +294,7 @@ CloudTrail for immutable storage in S3 Object Lock bucket.
 All third-party dependencies must be pinned to exact
 versions. Unpinned dependencies (`^1.2.3` or `~1.2.3`)
 are not permitted in production Lambda packages.
+
 ```json
 // CORRECT — exact version pin
 "dependencies": {
@@ -291,7 +307,7 @@ are not permitted in production Lambda packages.
   "aws-sdk": "^2.1.0",
   "jsonwebtoken": "~9.0.0"
 }
-```
+```text
 
 Snyk dependency scanning must pass in CI pipeline
 before any deployment to staging or production.
@@ -299,6 +315,7 @@ Critical vulnerabilities block deployment.
 High vulnerabilities require Security Architect approval.
 
 **Definition of Done:**
+
 - [ ] All package.json/requirements.txt use exact versions
 - [ ] Snyk scan integrated in CI pipeline
 - [ ] Critical CVE = pipeline blocked
@@ -316,7 +333,8 @@ High vulnerabilities require Security Architect approval.
 Application sessions must enforce the following timeouts
 to mitigate both remote session theft and physical
 workstation exposure at branch counters.
-```
+
+```text
 CUSTOMER SESSIONS (mobile + web):
   Access token TTL:   15 minutes (Cognito enforced)
   Refresh token TTL:  1 day (rotates on every use)
@@ -328,13 +346,14 @@ STAFF SESSIONS (branch counter):
   Idle timeout:       5 minutes (T-015 mitigation)
   Screen lock:        60 seconds (Intune Group Policy)
   Maximum session:    8 hours (force re-authentication)
-```
+```text
 
 Session tokens must be hashed before storage in DynamoDB.
 Plain-text session tokens in any storage medium constitute
 a CRITICAL security incident.
 
 **Definition of Done:**
+
 - [ ] Cognito access token TTL = 15 minutes confirmed
 - [ ] Application idle timeout enforces re-authentication at 5 min
 - [ ] DynamoDB session store contains hashed tokens only
@@ -353,13 +372,15 @@ a CRITICAL security incident.
 EU customers have the right to request their personal data
 in machine-readable format. This endpoint must be implemented
 before the platform accepts bookings from EU nationals.
-```
+
+```text
 Endpoint:    GET /api/profile/export
 Auth:        Valid JWT + step_up_mfa claim (SR-APP-002)
 Rate limit:  1 request per customer per 24 hours
 Response:    JSON (see schema below)
 Audit log:   Every export logged with customer ID + timestamp
-```
+```text
+
 ```json
 {
   "export_generated_at": "2025-01-15T14:23:07Z",
@@ -383,7 +404,7 @@ Audit log:   Every export logged with customer ID + timestamp
     "consent_timestamp": "2025-01-10T09:00:00Z"
   }
 }
-```
+```text
 
 The response must include the customer's OWN data only.
 The Lambda must validate that the JWT sub claim matches
@@ -392,6 +413,7 @@ Cross-customer data access via this endpoint is a
 CRITICAL security incident.
 
 **Definition of Done:**
+
 - [ ] Endpoint requires step_up_mfa claim
 - [ ] JWT sub must match requested customer ID
 - [ ] Rate limit: 1 per customer per 24 hours enforced

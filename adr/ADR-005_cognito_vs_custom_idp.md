@@ -45,12 +45,14 @@ data residency.
 ## Consequences
 
 **Positive:**
+
 - POPIA-compliant data residency in af-south-1 by default
 - Advanced Security Mode detects and blocks high-risk sign-ins automatically
 - No JWT implementation bugs — Cognito is AWS-audited and certified
 - 50,000 MAU free tier covers development and initial production
 
 **Negative / Trade-offs:**
+
 - Vendor lock-in to AWS Cognito APIs — mitigated by abstracting auth
   behind an AuthService interface in the application layer
 - Cognito has some UX limitations for complex identity flows (e.g.

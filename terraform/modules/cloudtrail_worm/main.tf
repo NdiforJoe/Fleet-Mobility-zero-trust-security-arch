@@ -77,11 +77,11 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "DenyNonTLS"
-        Effect = "Deny"
+        Sid       = "DenyNonTLS"
+        Effect    = "Deny"
         Principal = { AWS = "*" }
         Action    = "s3:*"
-        Resource  = [
+        Resource = [
           aws_s3_bucket.cloudtrail.arn,
           "${aws_s3_bucket.cloudtrail.arn}/*"
         ]
@@ -90,21 +90,21 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
         }
       },
       {
-        Sid    = "AllowCloudTrailWrite"
-        Effect = "Allow"
+        Sid       = "AllowCloudTrailWrite"
+        Effect    = "Allow"
         Principal = { Service = "cloudtrail.amazonaws.com" }
         Action    = "s3:PutObject"
         Resource  = "${aws_s3_bucket.cloudtrail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
         Condition = {
           StringEquals = {
-            "s3:x-amz-acl"               = "bucket-owner-full-control"
-            "aws:SourceArn"               = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${local.name_prefix}-trail"
+            "s3:x-amz-acl"  = "bucket-owner-full-control"
+            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${local.name_prefix}-trail"
           }
         }
       },
       {
-        Sid    = "AllowCloudTrailAclCheck"
-        Effect = "Allow"
+        Sid       = "AllowCloudTrailAclCheck"
+        Effect    = "Allow"
         Principal = { Service = "cloudtrail.amazonaws.com" }
         Action    = "s3:GetBucketAcl"
         Resource  = aws_s3_bucket.cloudtrail.arn

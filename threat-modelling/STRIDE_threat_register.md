@@ -1,4 +1,5 @@
 # STRIDE Threat Register
+
 ## Avis Fleet & Mobility Platform
 
 > **Methodology:** STRIDE (Spoofing, Tampering, Repudiation,

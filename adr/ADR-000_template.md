@@ -26,10 +26,12 @@ guided it? Connect it to the SABSA layer it addresses.]
 ## Consequences
 
 **Positive:**
+
 - [Benefit 1]
 - [Benefit 2]
 
 **Negative / Trade-offs:**
+
 - [Cost or risk introduced]
 - [Mitigation for that cost]
 

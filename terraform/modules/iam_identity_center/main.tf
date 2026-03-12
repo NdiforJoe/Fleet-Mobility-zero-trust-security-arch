@@ -127,9 +127,9 @@ resource "aws_ssoadmin_permission_set" "branch_manager" {
   session_duration = var.session_duration_staff
 
   tags = {
-    Name  = "${local.name_prefix}-ps-branch-manager"
-    ADR   = "ADR-001"
-    Role  = "branch-manager"
+    Name = "${local.name_prefix}-ps-branch-manager"
+    ADR  = "ADR-001"
+    Role = "branch-manager"
   }
 }
 
@@ -168,9 +168,9 @@ resource "aws_ssoadmin_permission_set_inline_policy" "branch_manager" {
       {
         # Managers can void (update status)
         # but still cannot hard-delete
-        Sid    = "AllowVoidBooking"
-        Effect = "Allow"
-        Action = ["dynamodb:UpdateItem"]
+        Sid      = "AllowVoidBooking"
+        Effect   = "Allow"
+        Action   = ["dynamodb:UpdateItem"]
         Resource = "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/avis-bookings-*"
         Condition = {
           StringEquals = {
@@ -237,9 +237,9 @@ resource "aws_ssoadmin_permission_set_inline_policy" "foreign_desk_agent" {
         Resource = "arn:aws:s3:::${local.name_prefix}-id-documents/foreign/*"
       },
       {
-        Sid    = "DenyDirectRekognitionAccess"
-        Effect = "Deny"
-        Action = "rekognition:*"
+        Sid      = "DenyDirectRekognitionAccess"
+        Effect   = "Deny"
+        Action   = "rekognition:*"
         Resource = "*"
         # Rekognition is called by Step Functions
         # role only — not directly by agents
@@ -359,9 +359,9 @@ resource "aws_organizations_policy" "deny_access_keys" {
         }
       },
       {
-        Sid    = "DenyRootAccountUsage"
-        Effect = "Deny"
-        Action = "*"
+        Sid      = "DenyRootAccountUsage"
+        Effect   = "Deny"
+        Action   = "*"
         Resource = "*"
         Condition = {
           StringLike = {
@@ -378,8 +378,8 @@ resource "aws_organizations_policy" "deny_access_keys" {
   })
 
   tags = {
-    Name  = "${local.name_prefix}-scp-deny-access-keys"
-    ADR   = "ADR-001"
-    Type  = "guardrail"
+    Name = "${local.name_prefix}-scp-deny-access-keys"
+    ADR  = "ADR-001"
+    Type = "guardrail"
   }
 }

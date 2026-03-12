@@ -1,5 +1,5 @@
 variable "project_name" { type = string }
-variable "environment"  { type = string }
+variable "environment" { type = string }
 
 variable "cloudwatch_alarm_threshold" {
   description = "Security Hub CIS compliance score threshold — alarm fires if score drops below this"

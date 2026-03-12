@@ -1,4 +1,5 @@
 # Cross-Border Transfer Justification
+
 ## Rekognition Face Comparison — af-south-1 to eu-west-1
 
 > **Purpose:** Evidence artifact for POPIA s26 cross-border transfer
@@ -54,7 +55,8 @@ to GDPR-regulated jurisdictions.
 ---
 
 ## Technical Safeguards
-```
+
+```text
 WHAT IS TRANSFERRED:
 Passport photo (JPEG, max 5MB) from S3 in af-south-1
 sent as base64 payload to Rekognition in eu-west-1
@@ -84,12 +86,13 @@ AUDIT TRAIL:
   verification timestamp, similarity score,
   agent ID, booking ID
 - No passport photo content in audit logs
-```
+```text
 
 ---
 
 ## Data Flow Diagram
-```
+
+```text
 Branch Counter (OR Tambo)
          |
          | Naledi photographs passport
@@ -118,7 +121,7 @@ Step Functions — update booking verification status
          |
          v
 CloudTrail — log verification result
-```
+```text
 
 ---
 
@@ -129,8 +132,8 @@ under the AWS Customer Agreement and AWS Data Processing
 Addendum, which incorporates GDPR-compliant Standard
 Contractual Clauses for data transfers.
 
-Reference: https://aws.amazon.com/agreement/
-AWS DPA: https://aws.amazon.com/compliance/gdpr-center/
+Reference: <https://aws.amazon.com/agreement/>
+AWS DPA: <https://aws.amazon.com/compliance/gdpr-center/>
 
 ---
 

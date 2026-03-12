@@ -1,4 +1,5 @@
 # KMS Configuration Evidence
+
 ## Avis Fleet & Mobility Platform
 
 > **Purpose:** Evidence artifact for POPIA s19 and ISO 27001 A.8.24
@@ -26,22 +27,28 @@
 ## Key Policy Summary
 
 ### alias/avis/pii
+
 Authorised decrypt principals:
+
 - `rds.amazonaws.com` — Aurora database encryption
 - `lambda.amazonaws.com` — booking service Lambda only
 - `s3.amazonaws.com` — PII document storage
 - `arn:aws:iam::ACCOUNT:role/avis-zero-trust-booking-service-role`
 
 Explicitly denied:
+
 - All other principals via explicit Deny condition in key policy
 - Prevents lateral access from fleet or admin roles
 
 ### alias/avis/biometric
+
 Authorised decrypt principals:
+
 - `rekognition.amazonaws.com` — face comparison only
 - `arn:aws:iam::ACCOUNT:role/avis-zero-trust-foreign-verification-role`
 
 Explicitly denied:
+
 - All other principals — biometric data cannot be
   decrypted by booking service, fleet service, or
   any other application role
@@ -60,4 +67,5 @@ Explicitly denied:
 ---
 
 ## How to Verify (Auditor Instructions)
+
 ```bash
