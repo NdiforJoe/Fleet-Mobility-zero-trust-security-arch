@@ -1,10 +1,12 @@
 # Zero-Trust Security Architecture
+
 ## Fleet & Mobility Order Platform — Avis South Africa
 
 > **Portfolio project** demonstrating enterprise security architecture
 > for a car rental platform modernisation on AWS.
 
 ## Frameworks
+
 | Framework | Purpose |
 |-----------|---------|
 | SABSA | 6-layer security architecture structure |
@@ -13,10 +15,12 @@
 | TOGAF | Enterprise architecture alignment |
 
 ## Compliance
+
 `POPIA` `ISO 27001` `NIST CSF` `GDPR` `PCI-DSS`
 
 ## Repo Structure
-```
+
+```text
 ├── architecture/      # SABSA matrix + high-level design
 ├── threat-modelling/  # STRIDE threat register + DFDs
 ├── grc/               # Compliance matrices + evidence
@@ -25,9 +29,10 @@
 ├── terraform/         # IaC modules (Phase 2)
 ├── incident-response/ # IR playbooks
 └── docs/              # Supporting documentation
-```
+```text
 
 ## Status
+
 - [x] Phase 1: Repo structure
 - [x] Phase 2: SABSA matrix
 - [x] Phase 3: STRIDE threat register
@@ -37,12 +42,15 @@
 - [x] Phase 7: Security-by-design handoff docs
 
 ## Cloud Platform
+
 AWS (af-south-1 — Cape Town) for POPIA data residency
 
 ## Architecture Diagrams
 
 ### VPC Hub-Spoke Topology
+
 ![VPC Hub-Spoke Architecture](architecture/diagrams/vpc_hub_spoke.png)
 
 ### Authentication Flow
+
 ![Authentication Flow](architecture/diagrams/identity_auth_flow.png)

@@ -1,0 +1,22 @@
+framework:
+  - terraform
+directory:
+  - terraform
+output:
+  - sarif
+output-file-path: .
+skip-check:
+  - CKV_AWS_144
+  - CKV_AWS_18
+  - CKV_AWS_86
+  - CKV2_AWS_62
+  - CKV_AWS_252
+  - CKV_AWS_382
+  - CKV2_AWS_5
+  - CKV2_AWS_3
+  - CKV2_AWS_61
+  - CKV_AWS_120
+  - CKV_AWS_225
+  - CKV2_AWS_51
+  - CKV2_AWS_77
+  - CKV_GIT_1

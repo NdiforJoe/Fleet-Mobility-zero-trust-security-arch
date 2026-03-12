@@ -99,8 +99,8 @@ resource "aws_cloudwatch_metric_alarm" "security_score_drop" {
   threshold           = 80
 
   tags = {
-    Name      = "${local.name_prefix}-security-score-alarm"
-    ADR       = "ADR-006"
+    Name       = "${local.name_prefix}-security-score-alarm"
+    ADR        = "ADR-006"
     Regulation = "ISO27001-A.12.4"
   }
 }

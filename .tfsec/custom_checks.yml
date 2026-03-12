@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────────
+# TFSEC CUSTOM CHECKS
+# Project-specific security rules beyond the built-in tfsec
+# checks. These enforce Avis-specific security standards
+# that generic checks do not cover.
+# ─────────────────────────────────────────────────────────────
+
+checks:
+  # ── Check: KMS key rotation must be enabled ──────────────
+  - code: AVIS-KMS-001
+    description: KMS CMK must have automatic key rotation enabled
+    impact: Without rotation, a compromised key remains valid indefinitely
+    resolution: Set enable_key_rotation = true on all aws_kms_key resources
+    requiredTypes:
+      - resource
+    requiredLabels:
+      - aws_kms_key
+    severity: HIGH
+    errorMessage: KMS key does not have automatic rotation enabled
+    matchSpec:
+      name: enable_key_rotation
+      action: equals
+      value: true
+
+  # ── Check: S3 buckets must block public access ───────────
+  - code: AVIS-S3-001
+    description: S3 bucket must have public access block enabled
+    impact: Public S3 bucket could expose PII or audit logs
+    resolution: Add aws_s3_bucket_public_access_block with all settings true
+    requiredTypes:
+      - resource
+    requiredLabels:
+      - aws_s3_bucket
+    severity: CRITICAL
+    errorMessage: S3 bucket does not have public access block configured
+    matchSpec:
+      name: bucket
+      action: isPresent
+
+  # ── Check: Security groups must not allow 0.0.0.0/0 ─────
+  - code: AVIS-SG-001
+    description: Security group must not allow unrestricted inbound access
+    impact: Unrestricted inbound access exposes resources to the internet
+    resolution: Replace 0.0.0.0/0 CIDR with specific IP ranges or SG references
+    requiredTypes:
+      - resource
+    requiredLabels:
+      - aws_security_group
+    severity: CRITICAL
+    errorMessage: Security group allows unrestricted inbound (0.0.0.0/0)
+    matchSpec:
+      name: cidr_blocks
+      action: notContains
+      value: "0.0.0.0/0"
+
+  # ── Check: CloudTrail must have log validation enabled ───
+  - code: AVIS-CT-001
+    description: CloudTrail must have log file validation enabled
+    impact: Without validation, log tampering cannot be detected (T-011)
+    resolution: Set enable_log_file_validation = true
+    requiredTypes:
+      - resource
+    requiredLabels:
+      - aws_cloudtrail
+    severity: HIGH
+    errorMessage: CloudTrail log file validation is not enabled
+    matchSpec:
+      name: enable_log_file_validation
+      action: equals
+      value: true

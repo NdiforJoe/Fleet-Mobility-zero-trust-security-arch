@@ -1,5 +1,5 @@
 variable "project_name" { type = string }
-variable "environment"  { type = string }
+variable "environment" { type = string }
 
 variable "mfa_configuration" {
   description = "Cognito MFA setting — ON enforces MFA for all users (ADR-005)"

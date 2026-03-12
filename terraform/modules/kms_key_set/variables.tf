@@ -1,5 +1,5 @@
 variable "project_name" { type = string }
-variable "environment"  { type = string }
+variable "environment" { type = string }
 
 variable "deletion_window" {
   description = "KMS key deletion window in days (7-30). Validated in root variables.tf."

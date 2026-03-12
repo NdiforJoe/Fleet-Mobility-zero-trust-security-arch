@@ -31,16 +31,20 @@ resource "aws_guardduty_detector" "main" {
   }
 
   tags = {
-    Name      = "${local.name_prefix}-guardduty"
-    ADR       = "ADR-006"
+    Name       = "${local.name_prefix}-guardduty"
+    ADR        = "ADR-006"
     Regulation = "POPIA-s23-NIST-DE.CM-1"
   }
 }
 
 # SNS topic for alerts
 resource "aws_sns_topic" "security_alerts" {
-  name              = "${local.name_prefix}-security-alerts"
-  kms_master_key_id = "alias/aws/sns"
+  name = "${local.name_prefix}-security-alerts"
+
+  # trivy:ignore:AVD-AWS-0136 -- CMK ARN injected at runtime via var.logs_key_arn
+  # Trivy cannot resolve variable values during static scan.
+  # Production value: module.kms_key_set.logs_key_arn (alias/avis/logs)
+  kms_master_key_id = var.logs_key_arn
 
   tags = { Name = "${local.name_prefix}-security-alerts" }
 }
@@ -66,8 +70,8 @@ resource "aws_cloudwatch_event_rule" "guardduty_high" {
   })
 
   tags = {
-    Name      = "${local.name_prefix}-guardduty-alert-rule"
-    STRIDERef = "T-010-T-011"
+    Name       = "${local.name_prefix}-guardduty-alert-rule"
+    STRIDERef  = "T-010-T-011"
     Regulation = "POPIA-s23"
   }
 }

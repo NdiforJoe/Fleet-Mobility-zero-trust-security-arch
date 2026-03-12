@@ -22,10 +22,10 @@
 
 terraform {
   backend "s3" {
-    bucket         = "avis-zero-trust-tfstate-074928164064"
-    key            = "core/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    use_lockfile   = true
+    bucket       = "avis-zero-trust-tfstate-074928164064"
+    key          = "core/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }

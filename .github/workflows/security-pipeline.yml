@@ -1,0 +1,276 @@
+# ─────────────────────────────────────────────────────────────
+# ZERO-TRUST SECURITY PIPELINE
+# Runs on push to main and on all pull requests
+#
+# Gates (all must pass before deploy):
+#   1. git-secrets     — no credentials in code
+#   2. tfsec           — Terraform misconfiguration scan
+#   3. Checkov         — compliance policy scan
+#   4. Snyk            — dependency CVE scan
+#   5. terraform fmt   — code style enforcement
+#   6. terraform validate — HCL syntax check
+#   7. terraform plan  — dry-run against AWS (main branch only)
+#
+# ADR reference: ADR-005 (security-by-design)
+# Compliance:    ISO 27001 A.8.25, NIST SA-11
+# STRIDE:        T-010 (supply chain), T-012 (tampering)
+# ─────────────────────────────────────────────────────────────
+
+name: Security Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  TF_VERSION: "1.7.0"
+  AWS_REGION: "af-south-1"
+  TF_WORKING_DIR: "./terraform"
+
+jobs:
+  # ───────────────────────────────────────────
+  # JOB 1: Secret Scanning
+  # Blocks any commit containing credentials,
+  # API keys, or tokens before they reach AWS.
+  # STRIDE: T-010 (credential exposure)
+  # ───────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for truffleHog
+
+      - name: TruffleHog — scan for secrets in git history
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: Gitleaks — pattern-based secret detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ───────────────────────────────────────────
+  # JOB 2: Terraform Format Check
+  # Enforces consistent HCL formatting.
+  # Fails if any .tf file is not formatted.
+  # ───────────────────────────────────────────
+  terraform-fmt:
+    name: Terraform Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+  # ───────────────────────────────────────────
+  # JOB 3: Terraform Validate
+  # Checks HCL syntax and variable references.
+  # Does not connect to AWS.
+  # ───────────────────────────────────────────
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    needs: terraform-fmt
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init (local only — no backend)
+        run: terraform init -backend=false
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+  # ───────────────────────────────────────────
+  # JOB 4: tfsec — Terraform Security Scan
+  # Scans for AWS security misconfigurations.
+  # Fails on HIGH and CRITICAL findings.
+  # STRIDE: T-005, T-010, T-011
+  # Compliance: ISO 27001 A.8.9, NIST CM-6
+  # ───────────────────────────────────────────
+  tfsec:
+    name: tfsec IaC Scan
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy IaC scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: ${{ env.TF_WORKING_DIR }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  # ───────────────────────────────────────────
+  # JOB 5: Checkov — Compliance Policy Scan
+  # Checks Terraform against compliance
+  # frameworks: CIS, NIST, PCI-DSS, ISO 27001
+  # STRIDE: T-005, T-011
+  # Compliance: ISO 27001 A.8.25, NIST SA-11
+  # ───────────────────────────────────────────
+  checkov:
+    name: Checkov Compliance Scan
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ${{ env.TF_WORKING_DIR }}
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          soft_fail: false
+          config_file: .checkov/config.yml
+
+      - name: Upload Checkov SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+  # ───────────────────────────────────────────
+  # JOB 6: Snyk — Dependency CVE Scan
+  # Scans all package manifests for known CVEs.
+  # Blocks on CRITICAL and HIGH vulnerabilities.
+  # STRIDE: T-012 (supply chain tampering)
+  # Compliance: ISO 27001 A.8.7, SR-APP-007
+  # ───────────────────────────────────────────
+  snyk:
+    name: Snyk Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: false
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: >
+            --severity-threshold=high
+            --sarif-file-output=snyk-results.sarif
+
+      - name: Upload Snyk SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-results.sarif
+          category: snyk
+
+  # ───────────────────────────────────────────
+  # JOB 7: Terraform Plan (main branch only)
+  # Dry-run against real AWS to show what
+  # would be created/modified/destroyed.
+  # Requires AWS credentials in GitHub secrets.
+  # Only runs on push to main — not on PRs.
+  # ───────────────────────────────────────────
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [secret-scan, tfsec, checkov]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -var="sso_instance_arn=${{ secrets.SSO_INSTANCE_ARN }}" \
+            -var="identity_store_id=${{ secrets.IDENTITY_STORE_ID }}" \
+            -out=tfplan \
+            -no-color
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Upload plan as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 5
+
+  # ───────────────────────────────────────────
+  # JOB 8: Pipeline Summary
+  # Posts a summary comment on PRs showing
+  # which gates passed and which failed.
+  # ───────────────────────────────────────────
+  pipeline-summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scan, terraform-fmt, terraform-validate, tfsec, checkov, snyk]
+    if: always()
+    steps:
+      - name: Post pipeline summary
+        run: |
+          echo "## Security Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scan (TruffleHog + Gitleaks) | ${{ needs.secret-scan.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Format | ${{ needs.terraform-fmt.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Validate | ${{ needs.terraform-validate.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| tfsec IaC Scan | ${{ needs.tfsec.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Checkov Compliance | ${{ needs.checkov.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Snyk CVE Scan | ${{ needs.snyk.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_All gates must pass before merge to main is permitted._" >> $GITHUB_STEP_SUMMARY

@@ -1,6 +1,6 @@
 variable "project_name" { type = string }
-variable "environment"  { type = string }
-variable "vpc_id"       { type = string }
+variable "environment" { type = string }
+variable "vpc_id" { type = string }
 
 variable "aws_region" {
   description = "AWS region — must match root module region"
@@ -41,4 +41,9 @@ variable "api_log_retention_days" {
   description = "CloudWatch log retention in days for API Gateway access logs"
   type        = number
   default     = 90
+}
+variable "logs_key_arn" {
+  description = "KMS logs key ARN for CloudWatch log group encryption"
+  type        = string
+  default     = ""
 }

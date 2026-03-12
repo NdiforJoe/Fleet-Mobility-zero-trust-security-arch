@@ -1,5 +1,5 @@
 variable "project_name" { type = string }
-variable "environment"  { type = string }
+variable "environment" { type = string }
 
 variable "sso_instance_arn" {
   description = "ARN of the IAM Identity Center instance — must exist before Terraform run"

@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────
+# CHECKOV CONFIGURATION
+# All suppressions require documented justification below.
+# ─────────────────────────────────────────────────────────────
+
+directory:
+  - terraform
+
+framework:
+  - terraform
+
+output:
+  - cli
+  - sarif
+
+skip-check:
+  - CKV_AWS_144   # POPIA s19: PII must stay in af-south-1; cross-region replication prohibited
+  - CKV_AWS_18    # CloudTrail data events cover S3 access; duplicate access logs not required
+  - CKV_AWS_86    # CloudFront not deployed in Phase 8; scheduled for Phase 2
+  - CKV2_AWS_62   # GuardDuty S3 protection covers anomaly detection; event notifications redundant
+  - CKV_AWS_252   # GuardDuty EventBridge->SNS covers alerting; CloudTrail SNS would fire on every API call
+  - CKV_AWS_382   # SG egress controlled by TGW route tables (ADR-003); SG egress rule is intentionally broad
+  - CKV2_AWS_5    # Portfolio IaC; SGs attached when compute resources added in subsequent phases
+  - CKV2_AWS_3    # Single-account dev environment; AWS Org GuardDuty delegation is Phase 2
+  - CKV2_AWS_61   # S3 Object Lock COMPLIANCE mode IS the lifecycle; separate lifecycle rule conflicts with WORM design
+  - CKV_AWS_120   # API GW caching is performance not security; TTL values are Application Architect scope
+  - CKV_AWS_225   # Same justification as CKV_AWS_120
+  - CKV2_AWS_51   # JWT + Lambda authoriser is auth model (ADR-005); client cert conflicts with zero-trust JWT flow
+  - CKV2_AWS_77   # AWSManagedRulesKnownBadInputsRuleSet covers Log4j CVE-2021-44228 via Log4JRCE rule
+
+soft-fail-on:
+  - LOW
+  - MEDIUM

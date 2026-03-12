@@ -35,6 +35,9 @@ module "guardduty_org" {
   project_name = var.project_name
   environment  = var.environment
   alert_email  = var.alert_email
+  logs_key_arn = module.kms_key_set.logs_key_arn
+
+  depends_on = [module.kms_key_set]
 }
 
 # MODULE 5 — Security Hub (ADR-006)
@@ -68,16 +71,17 @@ module "cloudtrail_worm" {
 module "waf_api_gateway" {
   source = "./modules/waf_api_gateway"
 
-  project_name         = var.project_name
-  environment          = var.environment
-  aws_region           = var.aws_region
-  vpc_id               = module.vpc_hub_spoke.hub_vpc_id
-  rate_limit_per_ip    = 1000
-  geo_block_countries  = []
+  project_name           = var.project_name
+  environment            = var.environment
+  aws_region             = var.aws_region
+  vpc_id                 = module.vpc_hub_spoke.hub_vpc_id
+  logs_key_arn           = module.kms_key_set.logs_key_arn
+  rate_limit_per_ip      = 1000
+  geo_block_countries    = []
   waf_log_retention_days = 90
   api_log_retention_days = 90
 
-  depends_on = [module.vpc_hub_spoke]
+  depends_on = [module.vpc_hub_spoke, module.kms_key_set]
 }
 
 # MODULE 8 — Cognito User Pool (ADR-005)
@@ -109,4 +113,7 @@ module "vpc_hub_spoke" {
   spoke_app_cidr   = var.spoke_app_cidr
   spoke_data_cidr  = var.spoke_data_cidr
   spoke_fleet_cidr = var.spoke_fleet_cidr
+  logs_key_arn     = module.kms_key_set.logs_key_arn
+
+  depends_on = [module.kms_key_set]
 }

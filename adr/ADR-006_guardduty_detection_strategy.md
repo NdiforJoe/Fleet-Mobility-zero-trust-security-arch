@@ -44,12 +44,14 @@ Microsoft Sentinel) is planned but not required for initial launch.
 ## Consequences
 
 **Positive:**
+
 - Operational within hours — no configuration required beyond enabling
 - Security Hub provides CIS Benchmark compliance score (target: >80%)
 - EventBridge integration means SOC receives findings within 15 minutes
 - Covers the full NIST CSF Detect function at AWS infrastructure layer
 
 **Negative / Trade-offs:**
+
 - GuardDuty detects AWS-infrastructure-layer threats only — application
   business logic abuse (e.g. a customer booking 100 vehicles) is not
   visible to GuardDuty

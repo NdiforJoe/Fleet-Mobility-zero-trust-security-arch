@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────
+# PR SECURITY CHECKS
+# Runs lightweight security checks on every pull request.
+# Faster feedback loop than the full pipeline.
+# Full pipeline runs on merge to main.
+# ─────────────────────────────────────────────────────────────
+
+name: PR Security Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # ───────────────────────────────────────────
+  # Quick secret scan on changed files only
+  # ───────────────────────────────────────────
+  pr-secret-scan:
+    name: Secret Scan (PR diff only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog scan on PR diff
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --only-verified
+
+  # ───────────────────────────────────────────
+  # tfsec on changed Terraform files only
+  # ───────────────────────────────────────────
+  pr-tfsec:
+    name: tfsec (changed files)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy IaC scan with PR annotations
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: ./terraform
+          format: sarif
+          output: trivy-pr-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-pr-results.sarif
+          category: trivy-pr
+
+  # ───────────────────────────────────────────
+  # Checkov on changed Terraform files only
+  # ───────────────────────────────────────────
+  pr-checkov:
+    name: Checkov (changed files)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkov scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./terraform
+          framework: terraform
+          soft_fail: false
+          config_file: .checkov/config.yml

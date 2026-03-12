@@ -52,8 +52,8 @@ resource "aws_kms_key" "pii" {
         Resource = "*"
       },
       {
-        Sid    = "DenyNonPIIServices"
-        Effect = "Deny"
+        Sid       = "DenyNonPIIServices"
+        Effect    = "Deny"
         Principal = { AWS = "*" }
         Action    = ["kms:Decrypt", "kms:GenerateDataKey"]
         Resource  = "*"
@@ -97,9 +97,37 @@ resource "aws_kms_alias" "pii" {
 # ─────────────────────────────────────────────
 
 resource "aws_kms_key" "payment" {
-  description             = "Avis payment references — masked PAN, transaction IDs. PCI-DSS Tier 2."
+  description             = "Avis payment references - masked PAN, transaction IDs. PCI-DSS Tier 2."
   deletion_window_in_days = var.deletion_window
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowPaymentService"
+        Effect = "Allow"
+        Principal = {
+          Service = "rds.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 
   tags = {
     Name           = "${local.name_prefix}-kms-payment"
@@ -120,9 +148,37 @@ resource "aws_kms_alias" "payment" {
 # ─────────────────────────────────────────────
 
 resource "aws_kms_key" "fleet" {
-  description             = "Avis fleet telemetry — GPS coordinates, VIN, speed data."
+  description             = "Avis fleet telemetry - GPS coordinates, VIN, speed data."
   deletion_window_in_days = var.deletion_window
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowFleetService"
+        Effect = "Allow"
+        Principal = {
+          Service = ["iot.amazonaws.com", "kinesis.amazonaws.com"]
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 
   tags = {
     Name           = "${local.name_prefix}-kms-fleet"
@@ -196,9 +252,37 @@ resource "aws_kms_alias" "logs" {
 # ─────────────────────────────────────────────
 
 resource "aws_kms_key" "secrets" {
-  description             = "Avis secrets — DB credentials, API keys. Secrets Manager."
+  description             = "Avis secrets - DB credentials, API keys. Secrets Manager."
   deletion_window_in_days = var.deletion_window
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowSecretsManager"
+        Effect = "Allow"
+        Principal = {
+          Service = "secretsmanager.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 
   tags = {
     Name           = "${local.name_prefix}-kms-secrets"
@@ -250,8 +334,8 @@ resource "aws_kms_key" "biometric" {
         Resource = "*"
       },
       {
-        Sid    = "DenyAllExceptRekognitionAndVerificationRole"
-        Effect = "Deny"
+        Sid       = "DenyAllExceptRekognitionAndVerificationRole"
+        Effect    = "Deny"
         Principal = { AWS = "*" }
         Action    = ["kms:Decrypt", "kms:GenerateDataKey"]
         Resource  = "*"

@@ -28,6 +28,7 @@ the hub provides inspected internet egress via NAT Gateway.
 ## Rationale
 
 Hub-spoke directly implements zero-trust Pillar 3 (Network Verification):
+
 - **No lateral movement:** Compromise of the app VPC gives an attacker
   no direct network path to the data VPC — all traffic must traverse the
   hub, where GuardDuty and VPC Flow Logs provide visibility
@@ -40,6 +41,7 @@ Hub-spoke directly implements zero-trust Pillar 3 (Network Verification):
 ## Consequences
 
 **Positive:**
+
 - Clear security boundary between PII data tier and other workloads
 - Transit Gateway route tables are the authoritative source of truth for
   permitted network flows
@@ -47,6 +49,7 @@ Hub-spoke directly implements zero-trust Pillar 3 (Network Verification):
   topology changes
 
 **Negative / Trade-offs:**
+
 - Transit Gateway costs ~$0.05/attachment/hour + $0.02/GB data processed
   (~$80-100/month for 3 spokes at demo scale)
 - Added latency of ~1ms for inter-spoke calls via TGW — acceptable for

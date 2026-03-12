@@ -1,5 +1,5 @@
 variable "project_name" { type = string }
-variable "environment"  { type = string }
+variable "environment" { type = string }
 
 variable "alert_email" {
   description = "SOC email address for HIGH and CRITICAL finding alerts"
@@ -22,4 +22,8 @@ variable "enable_malware_protection" {
   description = "Enable GuardDuty malware protection on EBS volumes"
   type        = bool
   default     = true
+}
+variable "logs_key_arn" {
+  description = "KMS logs key ARN for SNS topic encryption"
+  type        = string
 }

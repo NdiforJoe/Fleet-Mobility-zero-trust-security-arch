@@ -1,4 +1,5 @@
 # POPIA Personal Information Data Inventory
+
 ## Avis Fleet & Mobility Platform
 
 > **Purpose:** Documents all personal information processed by the

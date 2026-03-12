@@ -1,5 +1,7 @@
 # Data Security Requirements
+
 ## Handoff Document — Security Architect to Data Architect
+
 ### Avis Fleet & Mobility Platform
 
 > **Document type:** Non-Functional Security Requirements (NFRs)
@@ -39,6 +41,7 @@ the schema is finalised. Use this tier table:
 Aurora cluster must be encrypted at rest using
 `alias/avis/pii` CMK. Encryption must be enabled
 at cluster creation — it cannot be added afterward.
+
 ```sql
 -- Table design: classify every column
 CREATE TABLE customers (
@@ -63,7 +66,7 @@ CREATE TABLE customers (
   popia_consent   BOOLEAN     NOT NULL DEFAULT FALSE,
   consent_at      TIMESTAMPTZ
 );
-```
+```text
 
 Tier 1 fields (sa_id, passport, address) must be
 encrypted at the application layer BEFORE insertion,
@@ -71,6 +74,7 @@ in addition to Aurora's KMS encryption at rest.
 This provides double encryption for the most sensitive fields.
 
 **Definition of Done:**
+
 - [ ] Aurora cluster created with `alias/avis/pii` KMS key
 - [ ] Terraform: `storage_encrypted = true` + `kms_key_id`
 - [ ] Tier 1 fields encrypted at application layer
@@ -88,6 +92,7 @@ This provides double encryption for the most sensitive fields.
 Every S3 bucket must use SSE-KMS with the correct
 CMK for its classification tier. SSE-S3 (AES-256)
 is not acceptable for PII or biometric data.
+
 ```hcl
 # CORRECT — SSE-KMS with classification-specific key
 resource "aws_s3_bucket_server_side_encryption_configuration" "pii_docs" {
@@ -109,15 +114,17 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "pii_docs" {
     }
   }
 }
-```
+```text
 
 Bucket naming convention must reflect classification:
+
 - `avis-pii-documents-{account}` → `alias/avis/pii`
 - `avis-id-documents-foreign-{account}` → `alias/avis/biometric`
 - `avis-fleet-telemetry-{account}` → `alias/avis/fleet`
 - `avis-audit-logs-{account}` → `alias/avis/logs`
 
 **Definition of Done:**
+
 - [ ] All S3 buckets use SSE-KMS not SSE-S3
 - [ ] Bucket encryption key matches data classification
 - [ ] Public access block enabled on all buckets
@@ -134,7 +141,8 @@ Bucket naming convention must reflect classification:
 No table should store a field that is not required
 for a documented business purpose. Before adding any
 new column, the Data Architect must confirm:
-```
+
+```text
 1. WHY is this field needed?
    (specific business process or legal obligation)
 
@@ -146,12 +154,13 @@ new column, the Data Architect must confirm:
 
 4. WHAT happens when the purpose ends?
    (deletion process)
-```
+```text
 
 Fields that cannot answer all four questions
 must not be added to the schema.
 
 **Definition of Done:**
+
 - [ ] Data dictionary completed for every table
 - [ ] Every column has documented business purpose
 - [ ] Macie scan confirms no unexpected PII in non-PII buckets
@@ -167,7 +176,8 @@ must not be added to the schema.
 
 Retention periods from `grc/popia_data_inventory.md`
 must be enforced automatically — not manually.
-```
+
+```text
 Aurora (booking records + PII):
   Soft-delete at request: set deleted_at = NOW()
   Hard-delete: Lambda scheduled job runs weekly,
@@ -190,9 +200,10 @@ S3 (audit logs — CloudTrail):
 S3 (fleet telemetry):
   Lifecycle rule: expire after 2 years
   Transition to Glacier after 90 days
-```
+```text
 
 **Definition of Done:**
+
 - [ ] Aurora: soft-delete column on all PII tables
 - [ ] Aurora: scheduled Lambda deletion job tested
 - [ ] DynamoDB: TTL attribute on session table
@@ -212,6 +223,7 @@ Aurora automated backups and manual snapshots
 inherit the cluster KMS key (`alias/avis/pii`).
 Cross-account snapshot copies must re-encrypt
 with the destination account's CMK.
+
 ```hcl
 resource "aws_db_cluster" "avis_main" {
   # ...
@@ -223,9 +235,10 @@ resource "aws_db_cluster" "avis_main" {
   skip_final_snapshot             = false
   final_snapshot_identifier       = "avis-final-snapshot"
 }
-```
+```text
 
 **Definition of Done:**
+
 - [ ] `storage_encrypted = true` in Terraform
 - [ ] Backup retention = 35 days
 - [ ] Snapshot encryption verified via AWS console
@@ -243,6 +256,7 @@ The session management DynamoDB table must enforce
 row-level access control so that each service role
 can only access records belonging to its own
 partition key scope.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -261,7 +275,7 @@ partition key scope.
     }
   }]
 }
-```
+```text
 
 This means a Lambda function processing
 customer A's request cannot read or write
@@ -269,6 +283,7 @@ customer B's session record — even if it
 has the correct table-level permission.
 
 **Definition of Done:**
+
 - [ ] IAM condition `dynamodb:LeadingKeys` on session table role
 - [ ] Integration test: role for customer A cannot read customer B record
 - [ ] DynamoDB encryption with `alias/avis/pii` CMK
@@ -286,6 +301,7 @@ has the correct table-level permission.
 The customer identity schema must support multiple
 document types. A single `id_number VARCHAR(13)` field
 assuming SA ID format is not acceptable.
+
 ```sql
 -- CORRECT schema — supports all document types
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS
@@ -308,12 +324,13 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS
     )),
   verification_method VARCHAR(30),  -- DHA_API, JUMIO, MANUAL
   verification_score  DECIMAL(5,2); -- Rekognition similarity score
-```
+```text
 
 Input validation rules per type are defined
 in SR-APP-003 (App Architect NFRs).
 
 **Definition of Done:**
+
 - [ ] Schema migration creates all new columns
 - [ ] CHECK constraints enforce valid document types
 - [ ] SA ID column retained for backwards compatibility

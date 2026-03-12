@@ -1,0 +1,17 @@
+# Markdownlint configuration
+# Relaxed rules suitable for technical documentation
+
+default: true
+
+# MD013 — line length
+# Disabled: compliance tables and code blocks
+# exceed 80 chars and that is acceptable
+MD013: false
+
+# MD033 — inline HTML
+# Disabled: draw.io diagrams use HTML comments
+MD033: false
+
+# MD041 — first line should be h1
+# Disabled: some docs start with frontmatter
+MD041: false

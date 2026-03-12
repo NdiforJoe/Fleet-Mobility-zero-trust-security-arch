@@ -210,9 +210,9 @@ resource "aws_wafv2_web_acl" "api_gateway" {
   }
 
   tags = {
-    Name      = "${local.name_prefix}-waf-api-gw"
-    ADR       = "ADR-003"
-    STRIDERef = "T-003-T-004-T-005-T-012"
+    Name       = "${local.name_prefix}-waf-api-gw"
+    ADR        = "ADR-003"
+    STRIDERef  = "T-003-T-004-T-005-T-012"
     Regulation = "OWASP-Top10-ISO27001-A.13.1"
   }
 }
@@ -239,7 +239,8 @@ resource "aws_wafv2_web_acl_logging_configuration" "api_gateway" {
 resource "aws_cloudwatch_log_group" "waf" {
   # WAF log group MUST start with aws-waf-logs-
   name              = "aws-waf-logs-${local.name_prefix}-api-gw"
-  retention_in_days = 90
+  retention_in_days = 365
+  kms_key_id        = var.logs_key_arn
 
   tags = {
     Name      = "${local.name_prefix}-waf-logs"
@@ -255,20 +256,22 @@ resource "aws_cloudwatch_log_group" "waf" {
 
 resource "aws_api_gateway_rest_api" "main" {
   name        = "${local.name_prefix}-api"
-  description = "Avis Fleet Platform API — WAF protected, Lambda authoriser on all routes"
+  description = "Avis Fleet Platform API - WAF protected, Lambda authoriser on all routes"
 
   endpoint_configuration {
     types = ["REGIONAL"]
   }
 
-  # Minimum TLS 1.2 — enforces TLS 1.3 via
-  # CloudFront in front of this gateway
   minimum_compression_size = 0
 
   tags = {
     Name      = "${local.name_prefix}-api-gw"
     ADR       = "ADR-003"
     STRIDERef = "T-003-T-004"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -328,23 +331,21 @@ resource "aws_api_gateway_stage" "main" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   stage_name    = var.environment
 
-  # Enable detailed metrics
   xray_tracing_enabled = true
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_access.arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      caller         = "$context.identity.caller"
-      user           = "$context.identity.user"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      resourcePath   = "$context.resourcePath"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
-      # Log authoriser result for audit
+      requestId        = "$context.requestId"
+      ip               = "$context.identity.sourceIp"
+      caller           = "$context.identity.caller"
+      user             = "$context.identity.user"
+      requestTime      = "$context.requestTime"
+      httpMethod       = "$context.httpMethod"
+      resourcePath     = "$context.resourcePath"
+      status           = "$context.status"
+      protocol         = "$context.protocol"
+      responseLength   = "$context.responseLength"
       authoriserResult = "$context.authorizer.principalId"
     })
   }
@@ -352,6 +353,19 @@ resource "aws_api_gateway_stage" "main" {
   tags = {
     Name      = "${local.name_prefix}-api-stage"
     STRIDERef = "T-003-T-004"
+  }
+}
+# CKV2_AWS_4: API Gateway execution logging level
+# Must be a separate resource from the stage
+resource "aws_api_gateway_method_settings" "all" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  stage_name  = aws_api_gateway_stage.main.stage_name
+  method_path = "*/*"
+
+  settings {
+    logging_level      = "INFO"
+    data_trace_enabled = false
+    metrics_enabled    = true
   }
 }
 
@@ -365,7 +379,8 @@ resource "aws_api_gateway_deployment" "main" {
 
 resource "aws_cloudwatch_log_group" "api_access" {
   name              = "/avis/api-gateway/${var.environment}/access-logs"
-  retention_in_days = 90
+  retention_in_days = 365
+  kms_key_id        = var.logs_key_arn
 
   tags = { Name = "${local.name_prefix}-api-access-logs" }
 }

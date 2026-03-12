@@ -26,6 +26,7 @@ and per trust boundary crossing.
 ## Rationale
 
 STRIDE is chosen for the following reasons:
+
 - **Developer-accessible:** The six categories (Spoofing, Tampering,
   Repudiation, Information Disclosure, Denial of Service, Elevation of
   Privilege) are concrete and actionable — a backend developer can apply
@@ -44,11 +45,13 @@ for 10+ components within the project timeline.
 ## Consequences
 
 **Positive:**
+
 - Consistent threat register format that all architects can contribute to
 - Threat register directly traceable to AWS controls (see STRIDE register)
 - STRIDE categories map cleanly to OWASP Top-10 API risks
 
 **Negative / Trade-offs:**
+
 - STRIDE does not natively include probability scoring — compensated by
   adding Likelihood/Impact columns to the register manually
 - STRIDE can miss complex multi-stage attack chains — mitigated by quarterly

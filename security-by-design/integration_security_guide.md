@@ -1,5 +1,7 @@
 # Integration Security Requirements
+
 ## Handoff Document — Security Architect to Integration Architect
+
 ### Avis Fleet & Mobility Platform
 
 > **Document type:** Integration Security Standards
@@ -16,7 +18,8 @@
 
 Every integration with a third-party system must satisfy
 four baseline principles before any data flows:
-```
+
+```text
 PRINCIPLE 1: MINIMUM NECESSARY DATA
   Send only the fields the partner needs for
   their specific purpose. No bulk PII payloads.
@@ -37,7 +40,7 @@ PRINCIPLE 4: AUDITABLE
   structured audit log entry.
   Data sent to each partner must be reconstructable
   from audit logs for POPIA s23 breach investigation.
-```
+```text
 
 ---
 
@@ -51,6 +54,7 @@ All outbound integration connections must use TLS 1.3.
 TLS 1.2 is acceptable only where the partner cannot
 support 1.3 and a documented exception is approved
 by the Security Architect.
+
 ```python
 # CORRECT — enforce TLS 1.3
 import ssl
@@ -64,9 +68,10 @@ ssl_context.check_hostname = True
 # INCORRECT — default SSL context allows older versions
 import requests
 response = requests.get(partner_url)  # no TLS version enforcement
-```
+```text
 
 **Definition of Done:**
+
 - [ ] All partner Lambda functions use explicit TLS 1.3 context
 - [ ] SSL Labs or testssl.sh scan confirms TLS 1.3 on all endpoints
 - [ ] TLS version logged in integration audit log
@@ -83,7 +88,8 @@ response = requests.get(partner_url)  # no TLS version enforcement
 Each partner integration must use credentials stored
 in AWS Secrets Manager under a partner-specific path.
 No shared credentials across partners.
-```
+
+```text
 SECRET NAMING CONVENTION:
 avis/integrations/{partner_name}/{credential_type}
 
@@ -98,20 +104,22 @@ All partner credentials rotated every 90 days.
 Rotation Lambda triggers partner credential
 update and verifies new credential before
 retiring the old one.
-```
+```text
 
 Lambda IAM roles for each integration must have
 `secretsmanager:GetSecretValue` on their specific
 secret ARN only — not `secretsmanager:*`.
+
 ```json
 {
   "Effect": "Allow",
   "Action": "secretsmanager:GetSecretValue",
   "Resource": "arn:aws:secretsmanager:af-south-1:ACCOUNT:secret:avis/integrations/airline-loyalty/*"
 }
-```
+```text
 
 **Definition of Done:**
+
 - [ ] All partner credentials in Secrets Manager
 - [ ] IAM role scoped to specific secret ARN
 - [ ] 90-day rotation configured per partner
@@ -131,7 +139,8 @@ Each partner receives only the fields documented
 in their Data Processing Agreement (DPA).
 API Gateway response transformation strips
 all other fields before the response leaves Avis.
-```
+
+```text
 PARTNER: Airline Loyalty Programme
 ─────────────────────────────────────────────
 PERMITTED FIELDS:
@@ -155,7 +164,8 @@ API Gateway response transformation template
 strips all fields not in PERMITTED list before
 response is sent. Lambda does not filter —
 API Gateway is the enforcement point.
-```
+```text
+
 ```json
 // API Gateway mapping template — airline partner
 #set($inputRoot = $input.path('$'))
@@ -166,9 +176,10 @@ API Gateway is the enforcement point.
   "rental_end_date": "$inputRoot.rental_end_date",
   "loyalty_points_earned": $inputRoot.loyalty_points
 }
-```
+```text
 
 **Definition of Done:**
+
 - [ ] Field list documented per partner in DPA register
 - [ ] API Gateway mapping template implemented per partner
 - [ ] Integration test: response contains only permitted fields
@@ -187,6 +198,7 @@ Every outbound partner API call must produce
 a structured audit log entry. If a breach occurs,
 the Security team must be able to determine exactly
 what data was sent to each partner and when.
+
 ```json
 {
   "timestamp": "2025-01-15T14:23:07Z",
@@ -205,13 +217,14 @@ what data was sent to each partner and when.
   "tls_version": "TLSv1.3",
   "outcome": "SUCCESS"
 }
-```
+```text
 
 Note: `fields_sent` logs field NAMES only.
 Field VALUES must never appear in audit logs.
 This protects PII while maintaining audit trail.
 
 **Definition of Done:**
+
 - [ ] All integration Lambdas emit structured audit log
 - [ ] fields_sent contains names not values
 - [ ] CloudWatch log group per integration partner
@@ -229,6 +242,7 @@ This protects PII while maintaining audit trail.
 Inbound webhook payloads from partners (e.g. Jumio
 verification results, airline booking confirmations)
 must be validated before processing.
+
 ```python
 import hmac
 import hashlib
@@ -264,9 +278,10 @@ def lambda_handler(event, context):
 
     # Process verified payload only
     process_verification_result(json.loads(payload))
-```
+```text
 
 **Definition of Done:**
+
 - [ ] HMAC validation on all inbound partner webhooks
 - [ ] Invalid signature returns 401 and logs warning
 - [ ] Webhook secret stored in Secrets Manager
