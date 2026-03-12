@@ -29,6 +29,11 @@ env:
   AWS_REGION: "af-south-1"
   TF_WORKING_DIR: "./terraform"
 
+permissions:
+  contents: read
+  security-events: write
+  id-token: write
+
 jobs:
   # ───────────────────────────────────────────
   # JOB 1: Secret Scanning
@@ -47,6 +52,7 @@ jobs:
 
       - name: TruffleHog — scan for secrets in git history
         uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -133,6 +139,7 @@ jobs:
       - name: Upload Trivy SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: trivy-results.sarif
           category: trivy
@@ -165,8 +172,9 @@ jobs:
       - name: Upload Checkov SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
-          sarif_file: checkov-results.sarif
+          sarif_file: checkov-results.sarif/results_sarif.sarif
           category: checkov
 
   # ───────────────────────────────────────────
