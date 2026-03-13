@@ -219,7 +219,7 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     needs: [secret-scan, tfsec, checkov]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false  # Disabled: requires OIDC — see docs/terraform_plan_setup.md
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
